@@ -1,0 +1,20 @@
+groups:
+- name: anomaly_alerts
+  rules:
+  - alert: HighErrorRate
+    expr: rate(request_count{http_status="500"}[1m]) > 0.5
+    for: 10s
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      description: "Service {{ $labels.instance }} has high error rate"
+
+  - alert: HighLatency
+    expr: rate(request_latency_seconds_sum[1m]) / rate(request_latency_seconds_count[1m]) > 0.3
+    for: 10s
+    labels:
+      severity: warning
+    annotations:
+      summary: "High latency detected"
+      description: "Service {{ $labels.instance }} has high latency"

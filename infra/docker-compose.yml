@@ -1,0 +1,75 @@
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: service_gateway/Dockerfile
+    ports:
+      - "5001:5000"
+    environment:
+      - BACKEND_URL=http://backend:5000
+    depends_on:
+      - backend
+      - loki
+    volumes:
+      - shared-logs:/var/log/app
+
+  backend:
+    build:
+      context: ..
+      dockerfile: service_backend/Dockerfile
+    ports:
+      - "5002:5000"
+    depends_on:
+      - loki
+    volumes:
+      - shared-logs:/var/log/app
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert.rules:/etc/prometheus/alert.rules
+    ports:
+      - "9090:9090"
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/config.yml
+    ports:
+      - "9093:9093"
+
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+        - ./loki/loki-config.yaml:/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yml
+      - shared-logs:/var/log/app
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  shared-logs:
